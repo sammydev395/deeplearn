@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+.idea/
+
+# Model files
+*.pth
+*.h5
+*.ckpt
+
+# Logs
+*.log
+logs/ 
