@@ -1,0 +1,26 @@
+{
+    "pressure": {
+        "min_limit": 0,
+        "max_limit": 5000,
+        "unit": "psi",
+        "alert_threshold": 4500
+    },
+    "temperature": {
+        "min_limit": 0,
+        "max_limit": 200,
+        "unit": "celsius",
+        "alert_threshold": 180
+    },
+    "vibration": {
+        "min_limit": 0,
+        "max_limit": 100,
+        "unit": "mm/s",
+        "alert_threshold": 80
+    },
+    "depth": {
+        "min_limit": 0,
+        "max_limit": 10000,
+        "unit": "meters",
+        "alert_threshold": 9500
+    }
+} 
