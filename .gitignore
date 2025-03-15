@@ -22,4 +22,3 @@ ENV/
 # Logs
 *.log
 logs/ 
-data/tagdata.json
