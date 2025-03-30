@@ -1,0 +1,72 @@
+LSTM Input Feature Connections
+============================
+
+1. Input Features to Units Connection
+-----------------------------------
+Each input feature connects to every LSTM unit with its own weights:
+
+Input Features (10) → LSTM Units (64)
+[feature1] → [unit1, unit2, ..., unit64]  (each with unique weights)
+[feature2] → [unit1, unit2, ..., unit64]  (each with unique weights)
+...
+[feature10] → [unit1, unit2, ..., unit64] (each with unique weights)
+
+2. Weight Structure per Unit
+--------------------------
+For each unit (64 total):
+- Each input feature has 2 weights:
+  * Weight for input gate
+  * Weight for forget gate
+- Each unit has 1 shared bias term (same for all features in that unit)
+
+Example for Unit 1:
+Input Feature 1 → [weight1, weight2] → Unit 1
+Input Feature 2 → [weight3, weight4] → Unit 1
+...
+Input Feature 10 → [weight19, weight20] → Unit 1
+Shared Bias → [bias1] → Unit 1 (same for all features)
+
+3. Parameter Count Breakdown
+--------------------------
+Per input feature per unit:
+- 2 weights (input gate, forget gate)
+- Total for 10 features: 20 weights per unit
+
+Per unit:
+- 20 weights (10 features × 2 weights)
+- 1 shared bias term (same for all features)
+- Total: 21 parameters per unit
+
+4. Complete Connection Structure
+-----------------------------
+Input Features → Weights → LSTM Units
+[10]          → [10×2×64] → [64]
+
+For each unit:
+- Receives all 10 input features
+- Each feature has 2 unique weights
+- One shared bias term for all features
+- Total connections per unit: 21
+
+5. Weight Initialization
+----------------------
+- Weights are initialized randomly
+- Bias is initialized randomly (one per unit)
+- Updated through backpropagation
+- Each connection has its own learning rate
+
+6. Data Flow Example
+------------------
+Input: [feature1, feature2, ..., feature10]
+For Unit 1:
+- (feature1 × weight1 + feature2 × weight3 + ... + feature10 × weight19) + shared_bias1
+- (feature1 × weight2 + feature2 × weight4 + ... + feature10 × weight20) + shared_bias1
+
+7. Backpropagation
+----------------
+- Each weight is updated based on:
+  * Error at the output
+  * Gradient of the loss function
+  * Learning rate
+- Shared bias is updated once per unit
+- Updates are unique to each connection 

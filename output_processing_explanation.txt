@@ -1,0 +1,82 @@
+Output Processing in AttentionLSTM
+================================
+
+1. LSTM Output Processing
+------------------------
+Input to Attention: [batch_size, seq_len, hidden_size]
+Example: [32, 100, 64]
+
+2. Attention Processing
+---------------------
+a) First Linear Layer:
+   Input: [32, 100, 64] → Output: [32, 100, 64]
+   - Transforms each time step's features
+
+b) Tanh:
+   Input: [32, 100, 64] → Output: [32, 100, 64]
+   - Normalizes values to [-1, 1]
+
+c) Second Linear Layer:
+   Input: [32, 100, 64] → Output: [32, 100, 1]
+   - Generates attention scores
+
+d) Softmax:
+   Input: [32, 100, 1] → Output: [32, 100, 1]
+   - Converts to probabilities (sum to 1)
+
+3. Context Vector Creation
+------------------------
+- Multiply attention weights by LSTM outputs
+- Sum across time steps
+Result: [batch_size, hidden_size]
+Example: [32, 64]
+
+4. Final Output Processing
+------------------------
+a) First Linear Layer:
+   Input: [32, 64] → Output: [32, 64]
+   - Transforms context vector
+
+b) ReLU:
+   Input: [32, 64] → Output: [32, 64]
+   - Applies max(0, x) activation
+
+c) Dropout:
+   Input: [32, 64] → Output: [32, ~51]
+   - Randomly drops 20% of units
+
+d) Final Linear Layer:
+   Input: [32, ~51] → Output: [32, output_size]
+   - Produces final predictions
+
+5. Complete Flow Example
+----------------------
+Input Sequence: [32, 100, 64]
+↓
+Attention Weights: [32, 100, 1]
+↓
+Context Vector: [32, 64]
+↓
+First Linear: [32, 64]
+↓
+ReLU: [32, 64]
+↓
+Dropout: [32, ~51]
+↓
+Final Output: [32, output_size]
+
+6. Parameter Count
+----------------
+Final Layers:
+- First Linear: 4,160 parameters (64×64 + 64)
+- ReLU: No parameters
+- Dropout: No parameters
+- Final Linear: 65 parameters (64×1 + 1)
+Total: 4,225 parameters
+
+7. Purpose of Each Layer
+----------------------
+- First Linear: Feature transformation
+- ReLU: Introduces non-linearity
+- Dropout: Prevents overfitting
+- Final Linear: Produces predictions 

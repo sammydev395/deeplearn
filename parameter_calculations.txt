@@ -1,0 +1,54 @@
+AttentionLSTM Parameter Calculations
+=================================
+
+1. LSTM Parameters (32,768)
+--------------------------
+For each LSTM cell:
+- 4 gates (input, forget, cell, output)
+- Each gate has:
+  * Weights: 64 × 64 = 4,096
+  * Bias: 64
+  * Total per gate: 4,160
+
+Per layer:
+- 4 gates × 4,160 = 16,640 parameters
+
+Total LSTM:
+- 2 layers × 16,640 = 32,768 parameters
+
+2. Attention Parameters (4,225)
+-----------------------------
+First Linear Layer (64→64):
+- Weights: 64 × 64 = 4,096
+- Bias: 64
+- Total: 4,160
+
+Second Linear Layer (64→1):
+- Weights: 64 × 1 = 64
+- Bias: 1
+- Total: 65
+
+Total Attention: 4,160 + 65 = 4,225
+
+3. Output Layer Parameters (4,225)
+--------------------------------
+First Linear Layer (64→64):
+- Weights: 64 × 64 = 4,096
+- Bias: 64
+- Total: 4,160
+
+Second Linear Layer (64→output_size):
+- Weights: 64 × 1 = 64
+- Bias: 1
+- Total: 65
+
+Total Output: 4,160 + 65 = 4,225
+
+Grand Total: 32,768 + 4,225 + 4,225 = 41,218 parameters
+
+Verification:
+------------
+LSTM: 2 × (4 × (64 × 64 + 64)) = 32,768
+Attention: 4,160 + 65 = 4,225
+Output: 4,160 + 65 = 4,225
+Total: 41,218 parameters 

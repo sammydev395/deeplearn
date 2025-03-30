@@ -1,0 +1,83 @@
+AttentionLSTM Architecture Diagram
+=================================
+
+Input Shape: [batch_size, seq_len, input_size]
+Output Shape: [batch_size, output_size]
+
+1. LSTM Layers
+-------------
+Input → LSTM Layer 1 → Dropout(0.2) → LSTM Layer 2
+[10]   → [64]        → [~51]        → [64]
+
+LSTM Parameters:
+- input_size: 10 (features)
+- hidden_size: 64 (units per layer)
+- num_layers: 2
+- dropout: 0.2 (20% between layers)
+
+2. Attention Mechanism
+---------------------
+LSTM Output → Linear(64→64) → Tanh → Linear(64→1) → Softmax
+[batch, seq, 64] → [batch, seq, 64] → [batch, seq, 64] → [batch, seq, 1] → [batch, seq, 1]
+
+Attention Parameters:
+- First Linear: 4,160 params (64×64 + 64 bias)
+- Tanh: No params
+- Second Linear: 65 params (64×1 + 1 bias)
+- Softmax: No params
+
+3. Output Layer
+--------------
+Context Vector → Linear(64→64) → ReLU → Dropout(0.2) → Linear(64→output_size)
+[batch, 64]    → [batch, 64]   → [batch, 64] → [batch, 64] → [batch, output_size]
+
+Output Parameters:
+- First Linear: 4,160 params (64×64 + 64 bias)
+- ReLU: No params
+- Dropout: No params
+- Second Linear: 65 params (64×output_size + output_size bias)
+
+Complete Flow:
+-------------
+Input [batch, seq, 10]
+    ↓
+LSTM Layer 1 [batch, seq, 64]
+    ↓
+Dropout(0.2) [batch, seq, ~51]
+    ↓
+LSTM Layer 2 [batch, seq, 64]
+    ↓
+Attention Weights [batch, seq, 1]
+    ↓
+Context Vector [batch, 64]
+    ↓
+Output Layer [batch, output_size]
+
+Total Parameters:
+----------------
+LSTM: 2 × (4 × (64 × 64 + 64)) = 32,768
+Attention: 4,160 + 65 = 4,225
+Output: 4,160 + 65 = 4,225
+Total: ~41,218 parameters
+
+Example with Well Sensor Data:
+----------------------------
+Input Features (10):
+- value
+- hour
+- day_of_week
+- is_weekend
+- rolling_mean_5
+- rolling_std_5
+- lag_1
+- lag_2
+- diff_1
+- pct_change
+
+Output:
+- Predicted sensor value
+
+Attention Weights:
+- Higher weights for important time steps
+- Lower weights for less relevant steps
+- Sum of weights = 1 for each sequence 

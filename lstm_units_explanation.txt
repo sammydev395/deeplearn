@@ -1,0 +1,73 @@
+LSTM Units and Hidden Size Explanation
+====================================
+
+1. Hidden Size (64)
+------------------
+- The LSTM layer has 64 units
+- Each unit is a complete LSTM cell with:
+  * Input gate
+  * Forget gate
+  * Cell state
+  * Output gate
+
+2. LSTM Cell Structure
+---------------------
+For each unit (64 total):
+Input → [Input Gate] → [Forget Gate] → [Cell State] → [Output Gate] → Output
+[10]   → [64]       → [64]          → [64]         → [64]         → [64]
+
+3. Parameter Count per Unit
+-------------------------
+Each unit has:
+- Input weights: 10 × 64 = 640
+- Hidden weights: 64 × 64 = 4,096
+- Bias terms: 64
+Total per unit: 4,800 parameters
+
+4. Complete LSTM Layer
+--------------------
+- 64 units × 4,800 parameters = 307,200 parameters per layer
+- 2 layers = 614,400 parameters
+
+5. Gates in Each Unit
+-------------------
+Each unit has 4 gates:
+1. Input Gate: Controls new information
+2. Forget Gate: Controls what to forget
+3. Cell State: Maintains long-term memory
+4. Output Gate: Controls what to output
+
+6. Data Flow
+-----------
+Input [batch, seq, 10] → LSTM Layer 1 [64 units] → LSTM Layer 2 [64 units]
+                      → Each unit processes all 10 input features
+                      → Each unit produces 1 output
+                      → Total 64 outputs per layer
+
+7. Memory Structure
+-----------------
+Each unit maintains:
+- Hidden state (h): 64 values
+- Cell state (c): 64 values
+- Gates: 4 × 64 values
+
+8. Parameter Distribution
+-----------------------
+Per unit (64 total):
+- Input weights: 640
+- Hidden weights: 4,096
+- Bias terms: 64
+- Total: 4,800
+
+Per layer:
+- 64 units × 4,800 = 307,200 parameters
+
+Total model:
+- 2 layers × 307,200 = 614,400 parameters
+
+Corrected Terminology:
+--------------------
+- An LSTM layer has 64 units
+- Each unit is a complete LSTM cell
+- The terms "LSTM cell" and "LSTM unit" are interchangeable
+- The hidden_size parameter determines the number of units in the layer 
