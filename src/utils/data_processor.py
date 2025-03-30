@@ -3,8 +3,14 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 import json
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union, Any, TypedDict
 from datetime import datetime
+
+class TagConfig(TypedDict):
+    """Type definition for tag configuration"""
+    data_type: str  # One of 'Float', 'UInt16', 'UInt32'
+    units: str      # Unit of measurement (e.g., '%', 'PSI', '°C')
+    description: str # Human-readable description of the tag
 
 class TagDataProcessor:
     def __init__(self, config_path: str):
@@ -12,13 +18,18 @@ class TagDataProcessor:
         Initialize processor with tag configuration
         
         Args:
-            config_path: Path to tag_config.json
+            config_path: Path to tag_config.json containing tag definitions
+            
+        Attributes:
+            tags (Dict[str, TagConfig]): Dictionary mapping tag aliases to their configurations
+            numeric_columns (List[str]): List of tag aliases that contain numeric data
+            scaler_params (Dict[str, Dict[str, float]]): Parameters for data normalization
         """
         with open(config_path, 'r') as f:
             config = json.load(f)
         
         # Extract relevant tags (numeric sensors only)
-        self.tags = {}
+        self.tags: Dict[str, TagConfig] = {}
         for tag in config['Tags']:
             if tag.get('DataType') in ['Float', 'UInt16', 'UInt32'] and tag.get('Units'):
                 self.tags[tag['TagAlias']] = {
@@ -28,7 +39,7 @@ class TagDataProcessor:
                 }
         
         self.numeric_columns = list(self.tags.keys())
-        self.scaler_params = {}
+        self.scaler_params: Dict[str, Dict[str, float]] = {}
         
         # If no numeric columns found, use a fallback approach
         if not self.numeric_columns:
@@ -44,17 +55,24 @@ class TagDataProcessor:
     
     def load_and_preprocess_data(self, data_path: str) -> pd.DataFrame:
         """
-        Load and preprocess tag data
+        Load and preprocess tag data from a JSON file
         
         Args:
-            data_path: Path to tagdata.json
+            data_path: Path to tagdata.json containing the sensor readings
+            
+        Returns:
+            pd.DataFrame: Preprocessed DataFrame with numeric columns and timestamps as index
+            
+        Note:
+            The method handles both array and line-by-line JSON formats.
+            If data loading fails, it falls back to synthetic data for testing.
         """
         # Load data
         try:
             with open(data_path, 'r') as f:
                 # Try to load as a JSON array first
                 try:
-                    data = json.load(f)
+                    data: List[Dict[str, Any]] = json.load(f)
                     if not isinstance(data, list):
                         data = [data]  # Convert to list if it's a single object
                 except json.JSONDecodeError:
@@ -145,7 +163,13 @@ class TagDataProcessor:
             return df
     
     def _create_synthetic_data(self) -> List[Dict[str, Any]]:
-        """Create synthetic data for testing when real data is not available"""
+        """
+        Create synthetic data for testing when real data is not available
+        
+        Returns:
+            List[Dict[str, Any]]: List of dictionaries containing synthetic sensor readings
+                Each dictionary has keys: 'Id', 'TagAlias', 'Timestamp', 'DisplayValue', 'Quality', 'WellDeviceID'
+        """
         print("Creating synthetic data for testing")
         data = []
         start_time = datetime(2025, 1, 1)
@@ -165,7 +189,12 @@ class TagDataProcessor:
         return data
     
     def _create_synthetic_dataframe(self) -> pd.DataFrame:
-        """Create synthetic dataframe for testing"""
+        """
+        Create synthetic dataframe for testing
+        
+        Returns:
+            pd.DataFrame: DataFrame with synthetic sensor readings and timestamps as index
+        """
         print("Creating synthetic dataframe for testing")
         dates = pd.date_range(start='2025-01-01', periods=1000, freq='H')
         data = {}
@@ -179,7 +208,18 @@ class TagDataProcessor:
         return df
     
     def normalize_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Normalize the data using min-max scaling"""
+        """
+        Normalize the data using z-score standardization
+        
+        Args:
+            df: Input DataFrame with numeric columns
+            
+        Returns:
+            pd.DataFrame: Normalized DataFrame with same structure as input
+            
+        Note:
+            Stores normalization parameters (mean, std) in self.scaler_params for later use
+        """
         normalized_data = {}
         
         for column in df.columns:
@@ -193,7 +233,16 @@ class TagDataProcessor:
         return pd.DataFrame(normalized_data, index=df.index)
     
     def inverse_normalize(self, data: np.ndarray, columns: List[str]) -> pd.DataFrame:
-        """Convert normalized values back to original scale"""
+        """
+        Convert normalized values back to original scale
+        
+        Args:
+            data: Numpy array of normalized values
+            columns: List of column names corresponding to the data
+            
+        Returns:
+            pd.DataFrame: DataFrame with values converted back to original scale
+        """
         original_scale = {}
         
         for i, column in enumerate(columns):
@@ -206,7 +255,7 @@ class TagDataProcessor:
 class WellTimeSeriesDataset(Dataset):
     def __init__(self, data: pd.DataFrame, sequence_length: int = 24, prediction_horizon: int = 1):
         """
-        Create sequences from tag data
+        Create sequences from tag data for time series prediction
         
         Args:
             data: Preprocessed and normalized tag data
@@ -226,10 +275,20 @@ class WellTimeSeriesDataset(Dataset):
             if not seq.empty and not target.empty:
                 self.sequences.append((seq, target))
     
-    def __len__(self):
+    def __len__(self) -> int:
+        """Return the number of sequences in the dataset"""
         return len(self.sequences)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Get a sequence and its target from the dataset
+        
+        Args:
+            idx: Index of the sequence to retrieve
+            
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: Input sequence and target tensors
+        """
         seq, target = self.sequences[idx]
         return (torch.FloatTensor(seq.values), 
                 torch.FloatTensor(target.values.squeeze()))
@@ -239,7 +298,19 @@ def prepare_dataloader(data: pd.DataFrame,
                       sequence_length: int = 24, 
                       prediction_horizon: int = 1,
                       shuffle: bool = True) -> DataLoader:
-    """Create DataLoader for training"""
+    """
+    Create DataLoader for training time series data
+    
+    Args:
+        data: Preprocessed and normalized tag data
+        batch_size: Number of sequences per batch
+        sequence_length: Number of time steps to use for input sequence
+        prediction_horizon: How many steps ahead to predict
+        shuffle: Whether to shuffle the data
+        
+    Returns:
+        DataLoader: PyTorch DataLoader configured for the time series data
+    """
     dataset = WellTimeSeriesDataset(
         data, 
         sequence_length=sequence_length,

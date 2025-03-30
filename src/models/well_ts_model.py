@@ -2,18 +2,46 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from typing import Tuple, Optional
 
 class WellLSTM(nn.Module):
+    """
+    LSTM model for well sensor time series prediction with attention mechanism.
+    
+    This model combines LSTM layers with self-attention to capture both temporal
+    dependencies and long-range relationships in the sensor data.
+    
+    Attributes:
+        input_size (int): Number of input features (number of sensors)
+        hidden_size (int): Number of hidden units in LSTM layers
+        num_layers (int): Number of LSTM layers
+        dropout_rate (float): Dropout rate for regularization
+        lstm (nn.LSTM): LSTM layers for temporal feature extraction
+        attention_query (nn.Linear): Linear layer for attention query computation
+        attention_key (nn.Linear): Linear layer for attention key computation
+        attention_value (nn.Linear): Linear layer for attention value computation
+        attention_scale (float): Scaling factor for attention scores
+        fc1 (nn.Linear): First fully connected layer
+        fc2 (nn.Linear): Second fully connected layer
+        output_layer (nn.Linear): Final output layer
+        layer_norm (nn.LayerNorm): Layer normalization for stability
+        dropout (nn.Dropout): Dropout layer for regularization
+    """
+    
     def __init__(self, input_size: int, hidden_size: int, num_layers: int, output_size: int, dropout: float = 0.2):
         """
-        LSTM model for well sensor time series prediction with attention mechanism
+        Initialize the WellLSTM model.
         
         Args:
             input_size: Number of input features (number of sensors)
             hidden_size: Number of hidden units in LSTM layers
             num_layers: Number of LSTM layers
             output_size: Number of output features (same as input_size for our case)
-            dropout: Dropout rate for regularization
+            dropout: Dropout rate for regularization (default: 0.2)
+            
+        Note:
+            The model uses Xavier/Glorot initialization for LSTM weights and
+            Kaiming/He initialization for ReLU-based layers.
         """
         super().__init__()
         
@@ -49,8 +77,14 @@ class WellLSTM(nn.Module):
         # Initialize weights
         self._init_weights()
     
-    def _init_weights(self):
-        """Initialize weights for better training"""
+    def _init_weights(self) -> None:
+        """
+        Initialize model weights using appropriate initialization strategies.
+        
+        - LSTM weights: Xavier/Glorot initialization
+        - ReLU-based layers: Kaiming/He initialization
+        - Bias terms: Zero initialization
+        """
         for name, param in self.named_parameters():
             if 'weight' in name:
                 if 'lstm' in name:
@@ -67,15 +101,24 @@ class WellLSTM(nn.Module):
             elif 'bias' in name:
                 nn.init.zeros_(param)
     
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Forward pass
+        Forward pass of the model.
         
         Args:
             x: Input tensor of shape (batch_size, sequence_length, input_size)
+               containing the sensor readings
             
         Returns:
-            Predictions of shape (batch_size, output_size)
+            torch.Tensor: Predictions of shape (batch_size, output_size)
+            
+        Note:
+            The forward pass consists of:
+            1. LSTM processing
+            2. Self-attention computation
+            3. Layer normalization
+            4. Residual feed-forward network
+            5. Final prediction
         """
         batch_size, seq_len, _ = x.shape
         
