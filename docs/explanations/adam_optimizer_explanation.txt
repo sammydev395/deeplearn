@@ -1,0 +1,85 @@
+Adam Optimizer Detailed Explanation
+================================
+
+1. What is Adam?
+---------------
+Adam (Adaptive Moment Estimation) is an optimization algorithm that:
+- Combines Momentum and RMSprop
+- Adapts learning rates for each parameter
+- Uses moving averages of gradients
+
+2. Key Components
+---------------
+a) First Moment (m_t):
+- Moving average of gradients
+- Like momentum, remembers past gradients
+- Helps with consistent updates
+
+b) Second Moment (v_t):
+- Moving average of squared gradients
+- Like RMSprop, adapts learning rates
+- Helps with sparse gradients
+
+3. Update Rule Breakdown
+---------------------
+```
+m_t = β1 * m_{t-1} + (1-β1) * g_t
+v_t = β2 * v_{t-1} + (1-β2) * g_t^2
+θ_t = θ_{t-1} - α * m_t / (sqrt(v_t) + ε)
+```
+
+Where:
+- m_t: First moment (momentum)
+- v_t: Second moment (RMSprop)
+- β1, β2: Decay rates (typically 0.9, 0.999)
+- α: Learning rate
+- ε: Small constant (prevents division by zero)
+- g_t: Current gradient
+- θ_t: Parameter to update
+
+4. Practical Example
+------------------
+For a weight in your LSTM:
+```
+Initial weight: 0.5
+Learning rate (α): 0.001
+Gradient (g_t): 0.2
+β1: 0.9
+β2: 0.999
+ε: 1e-8
+
+First update:
+m_t = 0.9 * 0 + (1-0.9) * 0.2 = 0.02
+v_t = 0.999 * 0 + (1-0.999) * 0.2^2 = 0.00004
+New weight = 0.5 - 0.001 * 0.02 / (sqrt(0.00004) + 1e-8)
+           = 0.5 - 0.001 * 0.02 / 0.00632
+           = 0.5 - 0.00316
+           = 0.49684
+```
+
+5. Benefits in LSTM Training
+--------------------------
+- Handles varying gradient scales
+- Works well with:
+  * Long sequences
+  * Sparse gradients
+  * Different feature scales
+- Automatically adjusts learning rates
+- Memory efficient
+
+6. Why Use Adam for LSTM?
+-----------------------
+- LSTM gradients can vary widely
+- Some features more important than others
+- Need to handle long-term dependencies
+- Works well with attention mechanism
+
+7. Default Parameters
+-------------------
+```python
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+# Default values:
+# β1 = 0.9
+# β2 = 0.999
+# ε = 1e-8
+``` 

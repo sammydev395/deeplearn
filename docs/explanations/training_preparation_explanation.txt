@@ -1,0 +1,111 @@
+Training Preparation Code Explanation
+==================================
+
+1. Data Preparation Function
+--------------------------
+```python
+def prepare_training_data(data_engineered, sequence_length=24, prediction_horizon=1, train_ratio=0.8):
+```
+- sequence_length: 24 (number of time steps to look back)
+- prediction_horizon: 1 (predict next time step)
+- train_ratio: 0.8 (80% training, 20% validation)
+
+2. Feature Selection
+------------------
+```python
+feature_columns = [
+    'value', 'hour', 'day_of_week', 'is_weekend',
+    'rolling_mean_5', 'rolling_std_5',
+    'lag_1', 'lag_2', 'diff_1', 'pct_change'
+]
+```
+10 features used:
+- Raw value
+- Time features (hour, day_of_week, is_weekend)
+- Rolling statistics (mean, std)
+- Lag features (lag_1, lag_2)
+- Difference features (diff_1, pct_change)
+
+3. Data Scaling
+-------------
+```python
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(data_engineered[feature_columns])
+```
+- Standardizes features (mean=0, std=1)
+- Important for neural network training
+- Returns scaler for later use
+
+4. Sequence Creation
+------------------
+```python
+X, y = [], []
+for i in range(len(scaled_df) - sequence_length - prediction_horizon + 1):
+    X.append(scaled_df.iloc[i:i+sequence_length].values)
+    y.append(scaled_df.iloc[i+sequence_length+prediction_horizon-1]['value'])
+```
+Creates:
+- X: Sequences of 24 time steps
+- y: Target value (next time step)
+Example:
+```
+X[0]: [t1, t2, ..., t24] → y[0]: t25
+X[1]: [t2, t3, ..., t25] → y[1]: t26
+```
+
+5. Tensor Conversion
+------------------
+```python
+X = torch.FloatTensor(np.array(X))
+y = torch.FloatTensor(np.array(y))
+```
+- Converts to PyTorch tensors
+- Required for neural network training
+
+6. Train/Validation Split
+-----------------------
+```python
+train_size = int(len(X) * train_ratio)
+X_train, X_val = X[:train_size], X[train_size:]
+y_train, y_val = y[:train_size], y[train_size:]
+```
+- 80% training data
+- 20% validation data
+
+7. DataLoader Creation
+--------------------
+```python
+train_dataset = TensorDataset(X_train, y_train)
+val_dataset = TensorDataset(X_val, y_val)
+
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+```
+- Creates PyTorch datasets
+- Creates data loaders with:
+  * Batch size: 32
+  * Training data shuffled
+  * Validation data not shuffled
+
+8. Model Initialization
+---------------------
+```python
+input_size = 10  # Number of input features
+hidden_size = 64
+num_layers = 2
+output_size = 1
+learning_rate = 0.001
+num_epochs = 50
+
+model = AttentionLSTM(input_size, hidden_size, num_layers, output_size)
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+```
+Model Parameters:
+- Input: 10 features
+- Hidden: 64 units per layer
+- Layers: 2 LSTM layers
+- Output: 1 prediction
+- Loss: Mean Squared Error
+- Optimizer: Adam with learning rate 0.001
+- Training: 50 epochs 

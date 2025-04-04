@@ -11,8 +11,8 @@ from tqdm import tqdm
 import os
 import time
 
-from models.well_ts_model import WellLSTM
-from utils.data_processor import TagDataProcessor, prepare_dataloader
+from src.models.well_ts_model import WellLSTM
+from src.utils.data_processor import TagDataProcessor, prepare_dataloader
 
 # Setup logging
 logging.basicConfig(

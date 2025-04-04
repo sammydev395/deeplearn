@@ -1,0 +1,106 @@
+Momentum and RMSprop Explanation
+==============================
+
+1. Momentum
+----------
+Concept:
+- Adds a fraction of the previous update to current update
+- Like a ball rolling down a hill
+- Helps overcome local minima
+
+Update Rule:
+```
+v_t = γ * v_{t-1} + α * g_t
+θ_t = θ_{t-1} - v_t
+```
+
+Where:
+- v_t: Velocity (accumulated gradient)
+- γ: Momentum factor (typically 0.9)
+- α: Learning rate
+- g_t: Current gradient
+- θ_t: Parameter to update
+
+Example:
+```
+Initial weight: 0.5
+Learning rate (α): 0.001
+Momentum (γ): 0.9
+Gradient (g_t): 0.2
+
+First update:
+v_t = 0.9 * 0 + 0.001 * 0.2 = 0.0002
+New weight = 0.5 - 0.0002 = 0.4998
+
+Second update (g_t = 0.3):
+v_t = 0.9 * 0.0002 + 0.001 * 0.3 = 0.00048
+New weight = 0.4998 - 0.00048 = 0.49932
+```
+
+Benefits:
+- Faster convergence
+- Reduces oscillations
+- Helps escape local minima
+- Smoother updates
+
+2. RMSprop
+---------
+Concept:
+- Adapts learning rate for each parameter
+- Divides learning rate by root mean square of gradients
+- Helps with varying gradient scales
+
+Update Rule:
+```
+E[g^2]_t = ρ * E[g^2]_{t-1} + (1-ρ) * g_t^2
+θ_t = θ_{t-1} - α * g_t / (sqrt(E[g^2]_t) + ε)
+```
+
+Where:
+- E[g^2]_t: Moving average of squared gradients
+- ρ: Decay rate (typically 0.9)
+- α: Learning rate
+- g_t: Current gradient
+- ε: Small constant
+- θ_t: Parameter to update
+
+Example:
+```
+Initial weight: 0.5
+Learning rate (α): 0.001
+Decay rate (ρ): 0.9
+Gradient (g_t): 0.2
+ε: 1e-8
+
+First update:
+E[g^2]_t = 0.9 * 0 + (1-0.9) * 0.2^2 = 0.004
+New weight = 0.5 - 0.001 * 0.2 / (sqrt(0.004) + 1e-8)
+           = 0.5 - 0.001 * 0.2 / 0.0632
+           = 0.5 - 0.00316
+           = 0.49684
+```
+
+Benefits:
+- Adapts to different gradient scales
+- Works well with sparse gradients
+- Handles varying feature importance
+- More stable learning
+
+3. How Adam Combines Both
+------------------------
+Adam takes the best of both:
+- From Momentum:
+  * Moving average of gradients
+  * Smoother updates
+  * Momentum-like behavior
+
+- From RMSprop:
+  * Adaptive learning rates
+  * Handles varying scales
+  * Per-parameter updates
+
+This combination makes Adam:
+- More robust
+- Faster converging
+- Better at handling different types of data
+- More stable in training 

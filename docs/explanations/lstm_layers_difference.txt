@@ -1,0 +1,81 @@
+Differences Between LSTM Layers
+=============================
+
+1. Layer 1 (First Layer)
+-----------------------
+Input: [batch_size, seq_len, input_size]
+Example: [32, 100, 10]
+
+What it learns:
+- Basic patterns in the raw data
+- Simple temporal relationships
+- Direct feature interactions
+
+Example with well sensor data:
+- Daily patterns (day/night cycles)
+- Basic correlations between sensors
+- Simple trends in the data
+
+2. Layer 2 (Second Layer)
+------------------------
+Input: [batch_size, seq_len, hidden_size]
+Example: [32, 100, 64]
+
+What it learns:
+- Complex patterns from Layer 1's outputs
+- Higher-level temporal relationships
+- Combined feature interactions
+
+Example with well sensor data:
+- Weekly patterns (weekday vs weekend)
+- Complex interactions between multiple sensors
+- Long-term trends and patterns
+
+3. Key Differences
+----------------
+Layer 1:
+- Processes raw input features
+- Learns basic patterns
+- Direct connection to input data
+- Simpler relationships
+
+Layer 2:
+- Processes Layer 1's outputs
+- Learns complex patterns
+- Indirect connection to input data
+- More abstract relationships
+
+4. Data Flow
+-----------
+Input → Layer 1 → Layer 2 → Output
+[10]  → [64]   → [64]   → [1]
+
+Layer 1:
+- Takes 10 input features
+- Produces 64 hidden states
+- Each state captures basic patterns
+
+Layer 2:
+- Takes 64 hidden states from Layer 1
+- Produces 64 new hidden states
+- Each state captures complex patterns
+
+5. Real-world Example
+-------------------
+Well Sensor Data:
+Layer 1 might learn:
+- Pressure changes during day/night
+- Basic correlations between sensors
+- Simple trends
+
+Layer 2 might learn:
+- How pressure patterns change on weekends
+- Complex interactions between multiple sensors
+- Long-term maintenance patterns
+
+6. Why Two Layers?
+----------------
+- Layer 1: Captures basic patterns
+- Layer 2: Combines these patterns into more complex ones
+- Together: Can learn both simple and complex relationships
+- Better at handling long-term dependencies 

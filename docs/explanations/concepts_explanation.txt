@@ -1,0 +1,71 @@
+Key Concepts Explanation
+======================
+
+1. LSTM Layers Structure
+-----------------------
+Two LSTM layers means:
+- Layer 1: 64 units (complete LSTM cells)
+- Layer 2: 64 units (complete LSTM cells)
+- Data flows from Layer 1 to Layer 2
+
+Visualization:
+```
+Input → Layer 1 → Layer 2 → Output
+[10]  → [64]   → [64]   → [1]
+```
+
+Each unit in each layer:
+- Has its own weights and bias
+- Processes the entire input
+- Maintains its own memory
+
+2. StandardScaler
+---------------
+Purpose:
+- Normalizes data to have:
+  * Mean = 0
+  * Standard Deviation = 1
+
+Formula:
+```
+scaled_value = (original_value - mean) / standard_deviation
+```
+
+Example:
+```
+Original: [10, 20, 30]
+Mean: 20
+Std: 8.16
+Scaled: [-1.22, 0, 1.22]
+```
+
+Why needed:
+- Equalizes feature scales
+- Prevents numerical instability
+- Improves training speed
+- Helps convergence
+
+3. Adam Optimizer
+---------------
+Combines:
+- Momentum: Uses past gradients
+- RMSprop: Adapts learning rates
+
+Key features:
+- Maintains per-parameter learning rates
+- Uses moving averages of:
+  * Gradients (first moment)
+  * Squared gradients (second moment)
+
+Update rule:
+```
+m_t = β1 * m_{t-1} + (1-β1) * g_t
+v_t = β2 * v_{t-1} + (1-β2) * g_t^2
+θ_t = θ_{t-1} - α * m_t / (sqrt(v_t) + ε)
+```
+
+Benefits:
+- Automatic learning rate adjustment
+- Handles sparse gradients well
+- Works well with noisy data
+- Memory efficient 
