@@ -31,10 +31,10 @@ class TagDataProcessor:
         # Extract relevant tags (numeric sensors only)
         self.tags: Dict[str, TagConfig] = {}
         for tag in config['Tags']:
-            if tag.get('DataType') in ['Float', 'UInt16', 'UInt32'] and tag.get('Units'):
+            if tag.get('DataType') in ['Float', 'UInt16', 'UInt32']:
                 self.tags[tag['TagAlias']] = {
                     'data_type': tag['DataType'],
-                    'units': tag['Units'],
+                    'units': tag.get('Units', ''),
                     'description': tag['Description']
                 }
         
@@ -55,112 +55,88 @@ class TagDataProcessor:
     
     def load_and_preprocess_data(self, data_path: str) -> pd.DataFrame:
         """
-        Load and preprocess tag data from a JSON file
+        Load and preprocess tag data from a CSV file
         
         Args:
-            data_path: Path to tagdata.json containing the sensor readings
+            data_path: Path to tagdata.csv containing the sensor readings
             
         Returns:
             pd.DataFrame: Preprocessed DataFrame with numeric columns and timestamps as index
-            
-        Note:
-            The method handles both array and line-by-line JSON formats.
-            If data loading fails, it falls back to synthetic data for testing.
         """
-        # Load data
+        print(f"\n=== Data Loading Debug Information ===")
+        print(f"Loading data from: {data_path}")
+        
+        # Load data from CSV
         try:
-            with open(data_path, 'r') as f:
-                # Try to load as a JSON array first
-                try:
-                    data: List[Dict[str, Any]] = json.load(f)
-                    if not isinstance(data, list):
-                        data = [data]  # Convert to list if it's a single object
-                except json.JSONDecodeError:
-                    # If that fails, try line-by-line parsing
-                    f.seek(0)  # Reset file pointer
-                    data = []
-                    for line in f:
-                        try:
-                            record = json.loads(line)
-                            if isinstance(record, dict):
-                                data.append(record)
-                        except json.JSONDecodeError:
-                            continue
+            df = pd.read_csv(data_path)
+            print(f"\nRaw CSV file information:")
+            print(f"Shape: {df.shape}")
+            print(f"Columns: {df.columns.tolist()}")
+            print(f"\nFirst few rows of raw data:")
+            print(df.head())
+            print(f"\nUnique TagAlias values in raw data: {df['TagAlias'].unique()}")
+            print(f"Number of unique TagAlias values: {len(df['TagAlias'].unique())}")
         except Exception as e:
             print(f"Error loading data: {e}")
-            # Create synthetic data for testing
-            data = self._create_synthetic_data()
-        
-        # Convert to DataFrame
-        df = pd.DataFrame(data)
-        
+            return pd.DataFrame()  # Return an empty DataFrame instead of synthetic data
+
         # Check if we have the expected columns
         if 'TagAlias' in df.columns and 'DisplayValue' in df.columns and 'Timestamp' in df.columns:
-            # Data is in a format where each row is a different tag reading
-            # We need to pivot it so each column is a tag and each row is a timestamp
-            
+            print("\nConverting DisplayValue to numeric...")
             # Convert DisplayValue to numeric where possible
             df['NumericValue'] = pd.to_numeric(df['DisplayValue'], errors='coerce')
+            print(f"Number of non-numeric values: {df['NumericValue'].isna().sum()}")
             
+            print("\nConverting timestamps...")
             # Convert timestamp
             df['Timestamp'] = pd.to_datetime(df['Timestamp'])
             
             # Filter for numeric tags that we're interested in
             available_tags = set(df['TagAlias'].unique())
-            usable_tags = set(self.numeric_columns).intersection(available_tags)
+            print(f"\nAvailable tags in data: {available_tags}")
+            print(f"Processor configured tags: {set(self.numeric_columns)}")
+            
+            usable_tags = available_tags  # Use all available tags
+            #usable_tags = set(self.numeric_columns).intersection(available_tags)
             
             if not usable_tags:
                 print(f"Warning: None of the configured numeric tags found in data. Available tags: {available_tags}")
-                # Use synthetic data as fallback
-                return self._create_synthetic_dataframe()
+                return pd.DataFrame()  # Return an empty DataFrame instead of synthetic data
             
             # Update numeric columns to only include available tags
             self.numeric_columns = list(usable_tags)
+            print(f"\nUsing tags: {self.numeric_columns}")
             
+            print("\nPivoting data...")
             # Pivot the data
             pivot_df = df.pivot_table(
                 index='Timestamp', 
                 columns='TagAlias', 
                 values='NumericValue',
-                aggfunc='first'  # Take the first value if multiple readings at same timestamp
+                aggfunc='first'
             )
+            
+            print(f"\nPivoted DataFrame shape: {pivot_df.shape}")
+            print(f"Pivoted DataFrame columns: {pivot_df.columns.tolist()}")
             
             # Keep only numeric columns we're interested in
             pivot_df = pivot_df[self.numeric_columns]
             
-            # Forward fill missing values (use previous value)
-            pivot_df = pivot_df.fillna(method='ffill')
+            print("\nForward filling missing values...")
+            # Forward fill missing values
+            pivot_df = pivot_df.ffill()
             
+            print("\nDropping rows with NaN values...")
             # Drop rows with any remaining NaN values
             pivot_df = pivot_df.dropna()
+            print(f"Final DataFrame shape after dropping NaN: {pivot_df.shape}")
             
+            print("\n=== End of Data Loading Debug Information ===\n")
             return pivot_df
         else:
-            # Data is already in the expected format with each column as a tag
-            # Filter for numeric columns
-            available_columns = set(df.columns)
-            usable_columns = set(self.numeric_columns).intersection(available_columns)
-            
-            if not usable_columns:
-                print(f"Warning: None of the configured numeric tags found in data. Available columns: {available_columns}")
-                # Use synthetic data as fallback
-                return self._create_synthetic_dataframe()
-            
-            # Update numeric columns to only include available columns
-            self.numeric_columns = list(usable_columns)
-            
-            # Keep only numeric columns
-            df = df[self.numeric_columns]
-            
-            # Convert data types
-            for col in df.columns:
-                if col in self.tags and self.tags[col]['data_type'] in ['UInt16', 'UInt32', 'Float']:
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
-            
-            # Drop rows with NaN values
-            df = df.dropna()
-            
-            return df
+            print("CSV file does not contain the expected columns.")
+            print(f"Available columns: {df.columns.tolist()}")
+            return pd.DataFrame()  # Return an empty DataFrame instead of synthetic data
     
     def _create_synthetic_data(self) -> List[Dict[str, Any]]:
         """
