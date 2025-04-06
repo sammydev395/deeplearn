@@ -11,6 +11,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime, timedelta
 
+try:
+    from IPython.display import display
+    IN_NOTEBOOK = True
+except ImportError:
+    IN_NOTEBOOK = False
+    def display(x):
+        print(x)
+
 def plot_sensor_analysis(data: pd.DataFrame, tag_alias: str) -> None:
     """Comprehensive visualization for a specific tag alias.
     
@@ -34,7 +42,7 @@ def plot_sensor_analysis(data: pd.DataFrame, tag_alias: str) -> None:
     
     # 2. Distribution plot
     ax2 = fig.add_subplot(gs[1, 0])
-    sns.histplot(tag_data['value'], kde=True, ax=ax2)
+    sns.histplot(data=pd.DataFrame({'value': tag_data['value']}), x='value', kde=True, ax=ax2)
     ax2.set_title(f'Distribution - {tag_alias}')
     ax2.set_xlabel('Value')
     ax2.set_ylabel('Count')
@@ -129,12 +137,21 @@ def analyze_data_balance(data: pd.DataFrame) -> None:
     # 1. Tag Distribution Metrics
     print("\nData Balance Metrics:")
     print("\nTag Distribution:")
-    display(data['tagalias'].value_counts(normalize=True))  # Show proportions
+    if IN_NOTEBOOK:
+        display(data['tagalias'].value_counts(normalize=True))  # Show proportions
+    else:
+        print(data['tagalias'].value_counts(normalize=True))
     
     # 2. Hourly Coverage Metrics
     print("\nHourly Coverage:")
-    display(data['hour'].value_counts(normalize=True))  # Show proportions
+    if IN_NOTEBOOK:
+        display(data['hour'].value_counts(normalize=True))  # Show proportions
+    else:
+        print(data['hour'].value_counts(normalize=True))
     
     # 3. Daily Coverage Metrics
     print("\nDaily Coverage:")
-    display(data['day'].value_counts(normalize=True))  # Show proportions 
+    if IN_NOTEBOOK:
+        display(data['day'].value_counts(normalize=True))  # Show proportions
+    else:
+        print(data['day'].value_counts(normalize=True)) 

@@ -43,7 +43,7 @@ def detect_outliers(
         results['iqr'] = data[
             ((data[columns] < (Q1 - 1.5 * IQR)) | 
              (data[columns] > (Q3 + 1.5 * IQR))).any(axis=1)
-        ].index
+        ].index.to_numpy()
     
     if 'isolation_forest' in methods:
         # Isolation Forest
@@ -157,7 +157,7 @@ def detect_time_series_outliers(
         rolling_mean = series.rolling(window=window).mean()
         rolling_std = series.rolling(window=window).std()
         z_scores = np.abs((series - rolling_mean) / rolling_std)
-        return z_scores > 3
+        return pd.Series(z_scores > 3, index=series.index)
     
     results['rolling_zscore'] = rolling_zscore(tag_data[value_column])
     

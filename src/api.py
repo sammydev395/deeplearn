@@ -63,7 +63,7 @@ async def predict(data: SensorReadings):
 async def get_alerts(
     severity: Optional[str] = None,
     sensor: Optional[str] = None,
-    hours: Optional[int] = 24
+    hours: int = 24
 ):
     """
     Get historical alerts with optional filtering
@@ -103,7 +103,7 @@ async def get_alerts(
     }
 
 @app.get("/trends")
-async def get_trends(hours: Optional[int] = 6):
+async def get_trends(hours: int = 6):
     """
     Get trend analysis for all sensors over specified time period
     """
@@ -133,8 +133,8 @@ async def retrain_model(config: RetrainingConfig):
     
     try:
         result = predictor.retrain(
-            learning_rate=config.learning_rate,
-            epochs=config.epochs
+            learning_rate=config.learning_rate or 0.001,
+            epochs=config.epochs or 10
         )
         return result
     except Exception as e:

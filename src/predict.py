@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 import json
 import time
+from typing import Optional
 
 from models.well_ts_model import WellLSTM
 from utils.data_processor import TagDataProcessor
@@ -55,7 +56,7 @@ def predict(
     model_path: str,
     config_path: str,
     data_path: str,
-    sequence_length: int = None,
+    sequence_length: int = 24,  # Default sequence length
     num_predictions: int = 50,
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
 ):

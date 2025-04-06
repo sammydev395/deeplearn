@@ -1,6 +1,12 @@
+"""
+Training script for well sensor data prediction model.
+"""
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.cuda.amp.grad_scaler import GradScaler
+from torch.cuda.amp.autocast_mode import autocast
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -75,7 +81,7 @@ def train_model(
     scaler = None
     if use_mixed_precision and device == 'cuda' and torch.cuda.is_available():
         if torch.cuda.get_device_capability()[0] >= 7:  # Volta or newer architecture
-            scaler = torch.cuda.amp.GradScaler()
+            scaler = GradScaler()
             logging.info("Using mixed precision training")
         else:
             logging.info("Mixed precision requested but GPU architecture doesn't support it efficiently")
@@ -146,25 +152,33 @@ def train_model(
         for batch_idx, (data, target) in enumerate(train_pbar):
             data, target = data.to(device), target.to(device)
             
-            # Mixed precision training
             if scaler is not None:
-                with torch.cuda.amp.autocast():
+                with autocast():
                     output = model(data)
-                    loss = criterion(output, target)
+                    loss: torch.Tensor = criterion(output, target)  # type: ignore
+                    assert isinstance(loss, torch.Tensor), "Loss must be a tensor"
                 
                 optimizer.zero_grad()
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
+                loss_tensor = torch.as_tensor(loss)  # Cast to tensor
+                if scaler is not None:
+                    loss_tensor = scaler.scale(loss_tensor)
+                    assert isinstance(loss_tensor, torch.Tensor), "loss_tensor must be a tensor"
+                    loss_tensor.backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    loss_tensor.backward()
+                    optimizer.step()
             else:
                 optimizer.zero_grad()
                 output = model(data)
-                loss = criterion(output, target)
-                loss.backward()
+                loss: torch.Tensor = criterion(output, target)  # type: ignore
+                loss_tensor = torch.as_tensor(loss)  # Cast to tensor
+                loss_tensor.backward()
                 optimizer.step()
             
-            train_loss += loss.item()
-            train_pbar.set_postfix({'loss': f"{loss.item():.6f}"})
+            train_loss += float(loss_tensor.item())  # type: ignore
+            train_pbar.set_postfix({'loss': f"{float(loss_tensor.item()):.6f}"})  # type: ignore
         
         # Validation phase
         model.eval()
@@ -176,15 +190,16 @@ def train_model(
                 data, target = data.to(device), target.to(device)
                 
                 if scaler is not None:
-                    with torch.cuda.amp.autocast():
+                    with autocast():
                         output = model(data)
-                        loss = criterion(output, target)
+                        loss: torch.Tensor = criterion(output, target)  # type: ignore
+                        assert isinstance(loss, torch.Tensor), "Loss must be a tensor"
                 else:
                     output = model(data)
-                    loss = criterion(output, target)
+                    loss: torch.Tensor = criterion(output, target)  # type: ignore
                 
                 val_loss += loss.item()
-                val_pbar.set_postfix({'loss': f"{loss.item():.6f}"})
+                val_pbar.set_postfix({'loss': f"{loss.item():.6f}"})  # type: ignore
         
         train_loss /= len(train_loader)
         val_loss /= len(val_loader)
