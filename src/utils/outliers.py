@@ -31,9 +31,14 @@ def detect_outliers(
     results: Dict[str, np.ndarray] = {}
     
     if 'zscore' in methods:
-        # Z-score method (assumes normal distribution)
-        z_scores = np.abs(stats.zscore(data[columns]))
-        results['zscore'] = np.where(z_scores > 3)[0]
+        # Check if data has sufficient variation
+        if np.allclose(data[columns].std(), 0):
+            print(f"Warning: Column {columns} has no variation. Skipping z-score method.")
+            results['zscore'] = np.array([])
+        else:
+            # Z-score method (assumes normal distribution)
+            z_scores = np.abs(stats.zscore(data[columns]))
+            results['zscore'] = np.where(z_scores > 3)[0]
     
     if 'iqr' in methods:
         # IQR method
@@ -139,10 +144,7 @@ def detect_time_series_outliers(
         threshold: Number of standard deviations for outlier detection
     
     Returns:
-        Dictionary containing:
-        - 'rolling_zscore': Boolean series indicating outliers from rolling z-score method
-        - 'seasonal_decomposition': Boolean series indicating outliers from seasonal decomposition
-        - 'ma_std': Boolean series indicating outliers from moving average method
+        Dictionary containing boolean masks for each outlier detection method
     """
     # Filter data for specific tag
     tag_data = data[data['tagalias'] == tag_alias].copy()
@@ -162,21 +164,20 @@ def detect_time_series_outliers(
     results['rolling_zscore'] = rolling_zscore(tag_data[value_column])
     
     # 2. Seasonal Decomposition Method
-    # Resample data to ensure regular time intervals (hourly)
     resampled_data = tag_data[value_column].resample('H').mean().interpolate()
     
-    # Perform seasonal decomposition
     try:
         decomposition = seasonal_decompose(
             resampled_data,
-            period=24,  # 24 hours for daily seasonality
+            period=24,
             extrapolate_trend=True
         )
-        
-        # Calculate residuals
         residuals = decomposition.resid
         residuals_std = np.std(residuals)
-        results['seasonal_decomposition'] = np.abs(residuals) > 2 * residuals_std
+        results['seasonal_decomposition'] = pd.Series(
+            np.abs(residuals) > 2 * residuals_std,
+            index=resampled_data.index
+        )
     except Exception as e:
         print(f"Could not perform seasonal decomposition for {tag_alias}: {str(e)}")
         results['seasonal_decomposition'] = pd.Series(False, index=resampled_data.index)
@@ -187,51 +188,12 @@ def detect_time_series_outliers(
         rolling_std = series.rolling(window=window).std()
         lower_bound = rolling_mean - threshold * rolling_std
         upper_bound = rolling_mean + threshold * rolling_std
-        return (series < lower_bound) | (series > upper_bound)
+        return pd.Series(
+            (series < lower_bound) | (series > upper_bound),
+            index=series.index
+        )
     
     results['ma_std'] = ma_std_outliers(tag_data[value_column])
-    
-    # Visualize results
-    plt.figure(figsize=(15, 12))
-    
-    # Original Time Series with Rolling Z-Score Outliers
-    plt.subplot(3, 1, 1)
-    plt.plot(tag_data.index, tag_data[value_column], 'b-', label='Original', alpha=0.5)
-    plt.scatter(tag_data.index[results['rolling_zscore']], 
-                tag_data[value_column][results['rolling_zscore']], 
-                c='red', label='Rolling Z-Score Outliers')
-    plt.title(f'Rolling Z-Score Outliers - {tag_alias}')
-    plt.legend()
-    
-    # Time Series with Seasonal Decomposition Outliers
-    plt.subplot(3, 1, 2)
-    plt.plot(resampled_data.index, resampled_data, 'b-', label='Original', alpha=0.5)
-    plt.scatter(resampled_data.index[results['seasonal_decomposition']], 
-                resampled_data[results['seasonal_decomposition']], 
-                c='red', label='Seasonal Decomposition Outliers')
-    plt.title('Seasonal Decomposition Outliers')
-    plt.legend()
-    
-    # Time Series with Moving Average Outliers
-    plt.subplot(3, 1, 3)
-    plt.plot(tag_data.index, tag_data[value_column], 'b-', label='Original', alpha=0.5)
-    plt.scatter(tag_data.index[results['ma_std']], 
-                tag_data[value_column][results['ma_std']], 
-                c='red', label='MA-STD Outliers')
-    plt.title('Moving Average with STD Outliers')
-    plt.legend()
-    
-    plt.tight_layout()
-    plt.show()
-    
-    # Print summary statistics
-    print(f"\nOutlier Detection Summary for {tag_alias}:")
-    print(f"Rolling Z-Score Outliers: {sum(results['rolling_zscore'])} "
-          f"({sum(results['rolling_zscore'])/len(tag_data)*100:.2f}%)")
-    print(f"Seasonal Decomposition Outliers: {sum(results['seasonal_decomposition'])} "
-          f"({sum(results['seasonal_decomposition'])/len(resampled_data)*100:.2f}%)")
-    print(f"Moving Average-STD Outliers: {sum(results['ma_std'])} "
-          f"({sum(results['ma_std'])/len(tag_data)*100:.2f}%)")
     
     return results
 
@@ -241,14 +203,7 @@ def analyze_seasonal_patterns(
     value_column: str = 'value',
     timestamp_column: str = 'timestamp'
 ) -> None:
-    """Analyze and visualize seasonal patterns in the time series data.
-    
-    Args:
-        data: DataFrame containing time series data
-        tag_alias: Name of the tag/sensor to analyze
-        value_column: Name of the column containing sensor values
-        timestamp_column: Name of the column containing timestamps
-    """
+    """Analyze and visualize seasonal patterns in the time series data."""
     # Filter data for specific tag
     tag_data = data[data['tagalias'] == tag_alias].copy()
     tag_data[timestamp_column] = pd.to_datetime(tag_data[timestamp_column])
@@ -261,7 +216,7 @@ def analyze_seasonal_patterns(
     # Perform seasonal decomposition
     decomposition = seasonal_decompose(
         hourly_data,
-        period=24,  # 24 hours for daily seasonality
+        period=24,
         extrapolate_trend=True
     )
     
@@ -288,18 +243,37 @@ def analyze_seasonal_patterns(
     plt.show()
     
     # Calculate and plot hourly patterns
+    assert isinstance(hourly_data.index, pd.DatetimeIndex), "Index must be DatetimeIndex"
     hourly_patterns = hourly_data.groupby(hourly_data.index.hour).mean()
     hourly_std = hourly_data.groupby(hourly_data.index.hour).std()
     
     plt.figure(figsize=(12, 6))
-    plt.plot(hourly_patterns.index, hourly_patterns.values, 'b-', label='Mean')
-    plt.fill_between(hourly_patterns.index,
-                    hourly_patterns.values - hourly_std.values,
-                    hourly_patterns.values + hourly_std.values,
+    plt.plot(hourly_patterns.index.to_numpy(), hourly_patterns.to_numpy(), 'b-', label='Mean')
+    plt.fill_between(hourly_patterns.index.to_numpy(),
+                    hourly_patterns.to_numpy() - hourly_std.to_numpy(),
+                    hourly_patterns.to_numpy() + hourly_std.to_numpy(),
                     alpha=0.2, label='±1 STD')
     plt.title(f'Hourly Patterns - {tag_alias}')
     plt.xlabel('Hour of Day')
     plt.ylabel('Value')
     plt.legend()
     plt.grid(True)
+    plt.show()
+
+    # Detect and plot outliers
+    results = detect_time_series_outliers(data, tag_alias, value_column, timestamp_column)
+    
+    plt.figure(figsize=(15, 6))
+    plt.plot(data.index, data[value_column], 'b-', label='Original', alpha=0.5)
+    
+    for method, mask in results.items():
+        if isinstance(mask, pd.Series) and mask.any():
+            outlier_data = data.loc[mask]
+            plt.plot(outlier_data.index, outlier_data[value_column],
+                    'r.', label=f'{method} outliers', alpha=0.5)
+    
+    plt.title(f'Outlier Detection for {tag_alias}')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
     plt.show() 
