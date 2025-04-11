@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import json
 from typing import Dict, List, Optional, Union, Any, TypedDict
 from datetime import datetime
+import logging
 
 class TagConfig(TypedDict):
     """Type definition for tag configuration"""
@@ -63,6 +64,11 @@ class TagDataProcessor:
         Returns:
             pd.DataFrame: Preprocessed DataFrame with numeric columns and timestamps as index
         """
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+
+        logger = logging.getLogger(__name__)
+        logger.debug("This is a debug message")
         print(f"\n=== Data Loading Debug Information ===")
         print(f"Loading data from: {data_path}")
         
